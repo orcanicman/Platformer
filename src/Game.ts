@@ -67,7 +67,7 @@ export class Game {
       this.windowManager.accumulatedTime -= frameTime;
     }
 
-    this.window.requestAnimationFrame(this.loop);
+    this.windowManager.animationFrameId = this.window.requestAnimationFrame(this.loop);
   };
 
   update = (timePassed: number) => {

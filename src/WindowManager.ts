@@ -7,7 +7,7 @@ export class WindowManager {
 
   init = (callback: (timestamp: number) => void) => {
     this.initializeCanvas();
-    this.initializeFreeze(callback);
+    this.initializeLoop(callback);
     this.resizeCanvasToDisplaySize();
   };
 
@@ -17,12 +17,12 @@ export class WindowManager {
     this.canvas.style.height = "100vh";
   };
 
-  initializeFreeze = (callback: (timestamp: number) => void) => {
+  initializeLoop = (loop: (timestamp: number) => void) => {
     const onFocus = () => {
       if (!this.animationFrameId) {
         // Resume the game loop
         this.previousTimestamp = performance.now();
-        this.animationFrameId = this.window.requestAnimationFrame(callback);
+        this.window.requestAnimationFrame(loop);
       }
     };
 
@@ -30,11 +30,15 @@ export class WindowManager {
       // Pause the game loop
       if (this.animationFrameId) {
         this.window.cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
       }
     };
 
     this.window.addEventListener("focus", onFocus);
     this.window.addEventListener("blur", onBlur);
+
+    // initialize first loop
+    onFocus();
   };
 
   resizeCanvasToDisplaySize = () => {

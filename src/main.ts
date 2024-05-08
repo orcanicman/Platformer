@@ -9,8 +9,7 @@ const main = () => {
   if (!context) throw new Error("Could not get the rendering context from the canvas.");
   root.appendChild(canvas);
 
-  const game = new Game(window, context);
-  game.loop(0);
+  new Game(window, context);
 };
 
 main();
