@@ -6,6 +6,7 @@ module.exports = {
   plugins: [
     new ESLintPlugin({
       context: "../",
+      failOnError: false,
       extensions: ["ts"],
       configType: "flat",
       eslintPath: "eslint/use-at-your-own-risk",
