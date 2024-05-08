@@ -1,6 +1,6 @@
 import { getComponent } from "../../helpers/getComponent";
-import { Entity } from "../../interfaces/Entity";
-import { System } from "../../interfaces/System";
+import { Entity } from "../interfaces/Entity";
+import { System } from "../interfaces/System";
 import { fragmentShaderSource } from "../../shaders/fragmentShader";
 import { vertexShaderSource } from "../../shaders/vertexShader";
 import { BoundingBox } from "../../types/BoundingBox";

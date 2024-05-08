@@ -1,7 +1,7 @@
 import { GRAVITY } from "../../config/GRAVITY";
 import { getComponent } from "../../helpers/getComponent";
-import { Entity } from "../../interfaces/Entity";
-import { System } from "../../interfaces/System";
+import { Entity } from "../interfaces/Entity";
+import { System } from "../interfaces/System";
 import { GravityComponent } from "../Components/GravityComponent";
 import { VelocityComponent } from "../Components/VelocityComponent";
 

@@ -1,4 +1,4 @@
-import { Component } from "../../interfaces/Component";
+import { Component } from "../interfaces/Component";
 
 export class GravityComponent implements Component {
   readonly type = "gravity";

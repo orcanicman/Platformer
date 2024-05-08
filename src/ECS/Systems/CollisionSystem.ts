@@ -1,7 +1,7 @@
 import { getComponent } from "../../helpers/getComponent";
 import { intersects } from "../../helpers/intersects";
-import { Entity } from "../../interfaces/Entity";
-import { System } from "../../interfaces/System";
+import { Entity } from "../interfaces/Entity";
+import { System } from "../interfaces/System";
 import { BoundingBox } from "../../types/BoundingBox";
 import { ColliderComponent } from "../Components/ColliderComponent";
 import { DimensionsComponent } from "../Components/DimensionsComponent";

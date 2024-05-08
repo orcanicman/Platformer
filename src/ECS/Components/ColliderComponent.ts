@@ -1,4 +1,4 @@
-import { Component } from "../../interfaces/Component";
+import { Component } from "../interfaces/Component";
 
 export class ColliderComponent implements Component {
   readonly type = "collider";

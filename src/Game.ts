@@ -11,8 +11,8 @@ import { MovementSystem } from "./ECS/Systems/MovementSystem";
 import { RenderSystem } from "./ECS/Systems/RenderSystem";
 import { WindowManager } from "./WindowManager";
 import { FPS } from "./config/FPS";
-import { Entity } from "./interfaces/Entity";
-import { System } from "./interfaces/System";
+import { Entity } from "./ECS/interfaces/Entity";
+import { System } from "./ECS/interfaces/System";
 
 export class Game {
   private entities: Entity[] = [

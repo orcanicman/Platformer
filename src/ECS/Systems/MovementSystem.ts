@@ -1,7 +1,7 @@
 import { MovementKeys } from "../../config/MovementKeys";
 import { getComponent } from "../../helpers/getComponent";
-import { Entity } from "../../interfaces/Entity";
-import { System } from "../../interfaces/System";
+import { Entity } from "../interfaces/Entity";
+import { System } from "../interfaces/System";
 import { ControllableComponent } from "../Components/ControllableComponent";
 import { PositionComponent } from "../Components/PositionComponent";
 import { VelocityComponent } from "../Components/VelocityComponent";

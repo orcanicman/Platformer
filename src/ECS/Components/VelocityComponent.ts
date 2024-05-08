@@ -1,4 +1,4 @@
-import { Component } from "../../interfaces/Component";
+import { Component } from "../interfaces/Component";
 import { Vector2 } from "../../types/Vector2";
 
 export class VelocityComponent implements Component {
