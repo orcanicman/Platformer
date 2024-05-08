@@ -3,9 +3,7 @@ import { intersects } from "../../helpers/intersects";
 import { Entity } from "../../interfaces/Entity";
 import { System } from "../../interfaces/System";
 import { BoundingBox } from "../../types/BoundingBox";
-import { Vector2 } from "../../types/Vector2";
 import { ColliderComponent } from "../Components/ColliderComponent";
-import { ControllableComponent } from "../Components/ControllableComponent";
 import { DimensionsComponent } from "../Components/DimensionsComponent";
 import { PositionComponent } from "../Components/PositionComponent";
 import { VelocityComponent } from "../Components/VelocityComponent";
@@ -104,37 +102,6 @@ export class CollisionSystem implements System {
     }
   };
 }
-
-const getCollisionSides = (box1: BoundingBox, box2: BoundingBox): ("left" | "right" | "up" | "down")[] => {
-  const sides: ("left" | "right" | "up" | "down")[] = [];
-
-  // Calculate the edges of each box
-  const box1Left = box1.x;
-  const box1Right = box1.x + box1.width;
-  const box1Top = box1.y;
-  const box1Bottom = box1.y + box1.height;
-
-  const box2Left = box2.x;
-  const box2Right = box2.x + box2.width;
-  const box2Top = box2.y;
-  const box2Bottom = box2.y + box2.height;
-
-  // Check for collision on each side and add to the sides array
-  if (box1Right > box2Left && box1Left < box2Left) {
-    sides.push("left");
-  }
-  if (box1Left < box2Right && box1Right > box2Right) {
-    sides.push("right");
-  }
-  if (box1Bottom > box2Top && box1Top < box2Top) {
-    sides.push("up");
-  }
-  if (box1Top < box2Bottom && box1Bottom > box2Bottom) {
-    sides.push("down");
-  }
-
-  return sides;
-};
 
 const getBoundingBoxSides = (boundingBox: BoundingBox): Sides => {
   return {

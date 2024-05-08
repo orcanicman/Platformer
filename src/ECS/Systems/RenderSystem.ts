@@ -141,9 +141,9 @@ export class RenderSystem implements System {
 }
 
 const setRectangle = (gl: WebGL2RenderingContext, position: BoundingBox) => {
-  var x1 = position.x;
-  var x2 = position.x + position.width;
-  var y1 = position.y;
-  var y2 = position.y + position.height;
+  const x1 = position.x;
+  const x2 = position.x + position.width;
+  const y1 = position.y;
+  const y2 = position.y + position.height;
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2]), gl.STATIC_DRAW);
 };
