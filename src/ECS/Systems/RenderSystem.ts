@@ -1,149 +1,189 @@
-import { getComponent } from "../../helpers/getComponent";
 import { Entity } from "../interfaces/Entity";
 import { System } from "../interfaces/System";
-import { fragmentShaderSource } from "../../shaders/fragmentShader";
-import { vertexShaderSource } from "../../shaders/vertexShader";
+
+import VertexShader from "../../shaders/cell.vertex.wgsl";
+import FragmentShader from "../../shaders/cell.fragment.wgsl";
 import { BoundingBox } from "../../types/BoundingBox";
-import { DimensionsComponent } from "../Components/DimensionsComponent";
+import { getComponent } from "../../helpers/getComponent";
 import { PositionComponent } from "../Components/PositionComponent";
+import { DimensionsComponent } from "../Components/DimensionsComponent";
 
 export class RenderSystem implements System {
-  private program!: WebGLProgram;
+  // Device/Context objects
+  adapter!: GPUAdapter;
+  device!: GPUDevice;
+  format!: GPUTextureFormat;
 
-  private positionAttributeLocation!: number;
-  private resolutionUniformLocation!: WebGLUniformLocation;
-  private translationUniformLocation!: WebGLUniformLocation;
-  private colorUniformLocation!: WebGLUniformLocation;
+  // Pipeline objects
+  pipeline!: GPURenderPipeline;
+  bindGroup!: GPUBindGroup;
+  uniformArray!: Float32Array;
+  uniformBuffer!: GPUBuffer;
 
-  private vao!: WebGLVertexArrayObject;
+  constructor(public context: GPUCanvasContext) {}
 
-  constructor(public gl: WebGL2RenderingContext) {
-    this.initShaders();
+  public async initialize() {
+    await this.setupDevice();
+
+    this.makePipeline();
   }
 
-  private initShaders() {
-    const vertexShader = this.compileShader(this.gl.VERTEX_SHADER, vertexShaderSource);
-    const fragmentShader = this.compileShader(this.gl.FRAGMENT_SHADER, fragmentShaderSource);
-    this.program = this.createShaderProgram(vertexShader, fragmentShader);
-    this.gl.useProgram(this.program);
+  async setupDevice() {
+    const adapter = await navigator.gpu.requestAdapter();
+    const device = await adapter?.requestDevice();
+    const format = navigator.gpu.getPreferredCanvasFormat();
 
-    // set uniform/attrib locations
-    const positionAttributeLocation = this.gl.getAttribLocation(this.program, "aPosition");
-    this.positionAttributeLocation = positionAttributeLocation;
+    if (!adapter || !device || !format) throw new Error("Renderer initialization error");
+    this.adapter = adapter;
+    this.device = device;
+    this.format = format;
 
-    const resolutionUniformLocation = this.gl.getUniformLocation(this.program, "uResolution");
-    if (resolutionUniformLocation === null) throw new Error("could not find uniform!");
-    this.resolutionUniformLocation = resolutionUniformLocation;
-
-    const colorUniformLocation = this.gl.getUniformLocation(this.program, "uColor");
-    if (colorUniformLocation === null) throw new Error("could not find uniform!");
-    this.colorUniformLocation = colorUniformLocation;
-
-    const translationUniformLocation = this.gl.getUniformLocation(this.program, "uTranslation");
-    if (translationUniformLocation === null) throw new Error("could not find uniform!");
-    this.translationUniformLocation = translationUniformLocation;
-
-    this.initializeVertexArrayObjects();
+    this.context.configure({
+      device,
+      format,
+    });
   }
 
-  initializeVertexArrayObjects() {
-    const positionBuffer = this.gl.createBuffer();
+  makePipeline() {
+    // declare vertexBufferLayout
+    const vertexBufferLayout: GPUVertexBufferLayout = {
+      arrayStride: 8,
+      attributes: [
+        {
+          format: "float32x2",
+          offset: 0,
+          shaderLocation: 0, // Position, see vertex shader
+        },
+      ],
+    };
 
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, positionBuffer);
+    // declare cellShaderModule
+    const cellShaderModule = this.device.createShaderModule({
+      label: "Cell shader",
+      code: `
+      ${VertexShader.code}
+      
+      ${FragmentShader.code}
+      `,
+    });
 
-    // prettier-ignore
-    const bufferData = new Float32Array([
-        10, 20,
-        80, 20,
-        10, 30,
-        
-        10, 30,
-        80, 20,
-        80, 30,
-      ]);
+    // initialize cellPipeline
+    const cellPipeline = this.device.createRenderPipeline({
+      label: "Cell pipeline",
+      layout: "auto",
+      vertex: {
+        module: cellShaderModule,
+        entryPoint: "vertexMain",
+        buffers: [vertexBufferLayout],
+      },
+      fragment: {
+        module: cellShaderModule,
+        entryPoint: "fragmentMain",
+        targets: [
+          {
+            format: this.format,
+          },
+        ],
+      },
+    });
 
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, bufferData, this.gl.STATIC_DRAW);
+    // initialize uniforms
+    const uniformArray = new Float32Array([this.context.canvas.width, this.context.canvas.height]);
+    const uniformBuffer = this.device.createBuffer({
+      label: "Grid Uniforms",
+      size: uniformArray.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
 
-    const vao = this.gl.createVertexArray();
-    if (vao === null) throw new Error("Vao initalization failed");
+    // create bindGroup
+    const bindGroup = this.device.createBindGroup({
+      label: "Cell renderer bind group",
+      layout: cellPipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: uniformBuffer },
+        },
+      ],
+    });
 
-    this.gl.bindVertexArray(vao);
+    this.bindGroup = bindGroup;
 
-    this.gl.enableVertexAttribArray(this.positionAttributeLocation);
+    this.uniformBuffer = uniformBuffer;
+    this.uniformArray = uniformArray;
 
-    this.gl.vertexAttribPointer(this.positionAttributeLocation, 2, this.gl.FLOAT, false, 0, 0);
-
-    this.vao = vao;
-  }
-
-  private compileShader(type: number, source: string): WebGLShader {
-    const shader = this.gl.createShader(type);
-    if (!shader) throw new Error("could not make shader");
-    this.gl.shaderSource(shader, source);
-    this.gl.compileShader(shader);
-
-    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      console.error("An error occurred compiling the shader:", this.gl.getShaderInfoLog(shader));
-      this.gl.deleteShader(shader);
-      throw new Error("Shader compilation failed.");
-    }
-
-    return shader;
-  }
-
-  private createShaderProgram(vertexShader: WebGLShader, fragmentShader: WebGLShader): WebGLProgram {
-    const program = this.gl.createProgram();
-    if (!program) throw new Error("could not make Program");
-    this.gl.attachShader(program, vertexShader);
-    this.gl.attachShader(program, fragmentShader);
-    this.gl.linkProgram(program);
-
-    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-      console.error("Unable to initialize the shader program:", this.gl.getProgramInfoLog(program));
-      this.gl.deleteProgram(program);
-      throw new Error("Shader program initialization failed.");
-    }
-
-    return program;
+    // set the pipeline
+    this.pipeline = cellPipeline;
   }
 
   update = (timePassed: number, entities: Entity[]) => {
-    // Clear current canvas
-    this.gl.clearColor(0, 0, 0, 0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    // setup renderer
+    const encoder = this.device.createCommandEncoder();
 
-    // Set the viewport
-    this.gl.viewport(0, 0, this.gl.canvas.width, this.gl.canvas.height);
+    const renderPass = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: this.context.getCurrentTexture().createView(),
+          loadOp: "clear",
+          clearValue: { r: 0.121, g: 0.1125, b: 0.1125, a: 1 }, // dark
+          // clearValue: { r: 1, g: 1, b: 1, a: 1 }, // white
+          storeOp: "store",
+        },
+      ],
+    });
 
-    // Set resolution to current canvas resolution
-    this.gl.uniform2f(this.resolutionUniformLocation, this.gl.canvas.width, this.gl.canvas.height);
-
-    // For every entity, draw
+    // declare verticies for each entity
     for (const entity of entities) {
       const positionComponent = getComponent<PositionComponent>(entity, "position");
       const dimensionsComponent = getComponent<DimensionsComponent>(entity, "dimensions");
+
       // Don't draw anything if entity does not have a position or dimensions.
       if (!positionComponent || !dimensionsComponent) continue;
 
       // Put a rectangle in the position buffer
       const { height, width, x, y } = { ...positionComponent.position, ...dimensionsComponent.dimensions };
-      setRectangle(this.gl, { height, width, x, y });
+      const vertices = createRectFromBoundingBox({ height, width, x, y });
 
-      // Set color to black
-      this.gl.uniform4f(this.colorUniformLocation, 0, 0, 0, 1);
+      const vertexBuffer = this.device.createBuffer({
+        label: "Cell vertices",
+        size: vertices.byteLength,
+        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      });
 
-      // Translate (todo: move with camera)
-      this.gl.uniform2f(this.translationUniformLocation, 0, 0);
+      this.device.queue.writeBuffer(vertexBuffer, /*bufferOffset=*/ 0, vertices);
+      this.device.queue.writeBuffer(this.uniformBuffer, /*bufferOffset=*/ 0, this.uniformArray);
 
-      this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+      // TODO: Translate (move with camera)
+
+      // render
+      renderPass.setPipeline(this.pipeline);
+      renderPass.setVertexBuffer(0, vertexBuffer);
+      renderPass.setBindGroup(0, this.bindGroup);
+
+      renderPass.draw(vertices.length / 2);
     }
+
+    // Finalize rendering
+    renderPass.end();
+    this.device.queue.submit([encoder.finish()]);
   };
 }
 
-const setRectangle = (gl: WebGL2RenderingContext, position: BoundingBox) => {
-  const x1 = position.x;
-  const x2 = position.x + position.width;
-  const y1 = position.y;
-  const y2 = position.y + position.height;
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([x1, y1, x2, y1, x1, y2, x1, y2, x2, y1, x2, y2]), gl.STATIC_DRAW);
+const createRectFromBoundingBox = (boundingBox: BoundingBox) => {
+  const x1 = boundingBox.x;
+  const x2 = boundingBox.x + boundingBox.width;
+  const y1 = boundingBox.y;
+  const y2 = boundingBox.y + boundingBox.height;
+
+  // prettier-ignore
+  return new Float32Array([
+    // X, Y,
+      x1, y1, // Triangle 1 
+      x2, y1, 
+      x1, y2, 
+      
+      x1, y2, // Triangle 2
+      x2, y1, 
+      x2, y2
+  ]);
 };

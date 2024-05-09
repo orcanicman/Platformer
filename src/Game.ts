@@ -15,45 +15,48 @@ import { Entity } from "./ECS/interfaces/Entity";
 import { System } from "./ECS/interfaces/System";
 
 export class Game {
-  private entities: Entity[] = [
-    new DefaultEntity("0", [
-      new PositionComponent({ x: 75, y: 530 }),
-      new DimensionsComponent({ height: 25, width: 50 }),
-      new ColliderComponent("rigid"),
-    ]),
-    new DefaultEntity("2", [
-      new PositionComponent({ x: 150, y: 330 }),
-      new DimensionsComponent({ height: 200, width: 50 }),
-      new ColliderComponent("rigid"),
-    ]),
-
-    new DefaultEntity("1", [
-      new PositionComponent({ x: 100, y: 300 }),
-      new DimensionsComponent({ width: 10, height: 25 }),
-      new VelocityComponent({ x: 0, y: 0 }, { x: 750, y: 500 }),
-      new ControllableComponent(1000),
-      new GravityComponent(80),
-      new ColliderComponent("dynamic"),
-    ]),
-  ];
-
-  private systems: System[] = [
-    new MovementSystem(this.window),
-    new CollisionSystem(),
-    new GravitySystem(),
-    new RenderSystem(this.gl),
-  ];
+  private entities: Entity[] = [];
+  private systems: System[] = [];
 
   constructor(
     private window: Window,
-    private gl: WebGL2RenderingContext,
-    private windowManager = new WindowManager(window, gl.canvas as HTMLCanvasElement)
+    private gpuContext: GPUCanvasContext,
+    private windowManager = new WindowManager(window, gpuContext.canvas as HTMLCanvasElement)
   ) {
+    this.entities = [
+      new DefaultEntity("0", [
+        new PositionComponent({ x: 75, y: 530 }),
+        new DimensionsComponent({ height: 25, width: 50 }),
+        new ColliderComponent("rigid"),
+      ]),
+      new DefaultEntity("2", [
+        new PositionComponent({ x: 150, y: 330 }),
+        new DimensionsComponent({ height: 200, width: 50 }),
+        new ColliderComponent("rigid"),
+      ]),
+
+      new DefaultEntity("1", [
+        new PositionComponent({ x: 100, y: 300 }),
+        new DimensionsComponent({ width: 10, height: 25 }),
+        new VelocityComponent({ x: 0, y: 0 }, { x: 750, y: 500 }),
+        new ControllableComponent(1000),
+        new GravityComponent(80),
+        new ColliderComponent("dynamic"),
+      ]),
+    ];
+
+    this.systems = [new MovementSystem(this.window), new CollisionSystem(), new GravitySystem()];
+
     this.init();
   }
 
-  init = () => {
+  init = async () => {
     this.windowManager.init(this.loop);
+
+    const renderer = new RenderSystem(this.gpuContext);
+    await renderer.initialize();
+
+    this.systems.push(renderer);
   };
 
   loop = (timestamp: number) => {
