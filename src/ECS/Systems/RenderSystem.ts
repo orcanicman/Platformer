@@ -120,6 +120,9 @@ export class RenderSystem implements System {
     // setup renderer
     const encoder = this.device.createCommandEncoder();
 
+    // Update resolution
+    this.uniformArray = new Float32Array([this.context.canvas.width, this.context.canvas.height]);
+
     const renderPass = encoder.beginRenderPass({
       colorAttachments: [
         {
