@@ -1,12 +1,11 @@
+import { getComponent } from "../../helpers/getComponent";
+import { loadImageBitmap } from "../../helpers/loadImageBitmap";
+import RectShader from "../../shaders/rect.wgsl";
+import { BoundingBox } from "../../types/BoundingBox";
+import { DimensionsComponent } from "../Components/DimensionsComponent";
+import { PositionComponent } from "../Components/PositionComponent";
 import { Entity } from "../interfaces/Entity";
 import { System } from "../interfaces/System";
-
-import VertexShader from "../../shaders/cell.vertex.wgsl";
-import FragmentShader from "../../shaders/cell.fragment.wgsl";
-import { BoundingBox } from "../../types/BoundingBox";
-import { getComponent } from "../../helpers/getComponent";
-import { PositionComponent } from "../Components/PositionComponent";
-import { DimensionsComponent } from "../Components/DimensionsComponent";
 
 export class RenderSystem implements System {
   // Device/Context objects
@@ -25,7 +24,7 @@ export class RenderSystem implements System {
   public async initialize() {
     await this.setupDevice();
 
-    this.makePipeline();
+    await this.makePipeline();
   }
 
   async setupDevice() {
@@ -44,7 +43,7 @@ export class RenderSystem implements System {
     });
   }
 
-  makePipeline() {
+  async makePipeline() {
     // declare vertexBufferLayout
     const vertexBufferLayout: GPUVertexBufferLayout = {
       arrayStride: 8,
@@ -61,9 +60,7 @@ export class RenderSystem implements System {
     const cellShaderModule = this.device.createShaderModule({
       label: "Cell shader",
       code: `
-      ${VertexShader.code}
-      
-      ${FragmentShader.code}
+        ${RectShader.code}
       `,
     });
 
@@ -95,6 +92,29 @@ export class RenderSystem implements System {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
+    // TODO: REMOVE FROM HERE
+    // create texture
+    const testImage = await loadImageBitmap("/src/assets/red.png");
+
+    const texture = this.device.createTexture({
+      label: "/src/assets/character.png",
+      size: [testImage.width, testImage.height],
+      format: "rgba8unorm",
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+
+    this.device.queue.copyExternalImageToTexture(
+      {
+        source: testImage,
+      },
+      { texture },
+      { width: testImage.width, height: testImage.height }
+    );
+
+    // create sampler
+    const sampler = this.device.createSampler();
+    // TODO: REMOVE UNTIL HERE
+
     // create bindGroup
     const bindGroup = this.device.createBindGroup({
       label: "Cell renderer bind group",
@@ -103,6 +123,14 @@ export class RenderSystem implements System {
         {
           binding: 0,
           resource: { buffer: uniformBuffer },
+        },
+        {
+          binding: 1,
+          resource: texture.createView(),
+        },
+        {
+          binding: 2,
+          resource: sampler,
         },
       ],
     });
@@ -116,20 +144,20 @@ export class RenderSystem implements System {
     this.pipeline = cellPipeline;
   }
 
-  update = (timePassed: number, entities: Entity[]) => {
+  update = (_timePassed: number, entities: Entity[]) => {
     // setup renderer
     const encoder = this.device.createCommandEncoder();
 
     // Update resolution
     this.uniformArray = new Float32Array([this.context.canvas.width, this.context.canvas.height]);
 
+    // Clears the screen and begins rendering
     const renderPass = encoder.beginRenderPass({
       colorAttachments: [
         {
           view: this.context.getCurrentTexture().createView(),
           loadOp: "clear",
           clearValue: { r: 0.121, g: 0.1125, b: 0.1125, a: 1 }, // dark
-          // clearValue: { r: 1, g: 1, b: 1, a: 1 }, // white
           storeOp: "store",
         },
       ],

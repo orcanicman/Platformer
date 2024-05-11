@@ -13,6 +13,8 @@ import { WindowManager } from "./WindowManager";
 import { FPS } from "./config/FPS";
 import { Entity } from "./ECS/interfaces/Entity";
 import { System } from "./ECS/interfaces/System";
+import { SpriteComponent } from "./ECS/Components/SpriteComponent";
+import { loadImageBitmap } from "./helpers/loadImageBitmap";
 
 export class Game {
   private entities: Entity[] = [];
@@ -23,6 +25,15 @@ export class Game {
     private gpuContext: GPUCanvasContext,
     private windowManager = new WindowManager(window, gpuContext.canvas as HTMLCanvasElement)
   ) {
+    this.init();
+  }
+
+  init = async () => {
+    // Load renderer
+    const renderer = new RenderSystem(this.gpuContext);
+    await renderer.initialize();
+
+    // initialize ECS
     this.entities = [
       new DefaultEntity("0", [
         new PositionComponent({ x: 75, y: 530 }),
@@ -42,21 +53,13 @@ export class Game {
         new ControllableComponent(1000),
         new GravityComponent(80),
         new ColliderComponent("dynamic"),
+        // new SpriteComponent(await loadImageBitmap("")),
       ]),
     ];
 
-    this.systems = [new MovementSystem(this.window), new CollisionSystem(), new GravitySystem()];
+    this.systems = [new MovementSystem(this.window), new CollisionSystem(), new GravitySystem(), renderer];
 
-    this.init();
-  }
-
-  init = async () => {
     this.windowManager.init(this.loop);
-
-    const renderer = new RenderSystem(this.gpuContext);
-    await renderer.initialize();
-
-    this.systems.push(renderer);
   };
 
   loop = (timestamp: number) => {

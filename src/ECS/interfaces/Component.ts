@@ -1,3 +1,3 @@
 export type Component = {
-  type: "position" | "dimensions" | "velocity" | "controllable" | "gravity" | "collider";
+  type: "position" | "dimensions" | "velocity" | "controllable" | "gravity" | "collider" | "sprite";
 };
